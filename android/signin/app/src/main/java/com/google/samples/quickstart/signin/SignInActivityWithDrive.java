@@ -7,37 +7,33 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.OptionalPendingResult;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.common.api.Status;
 
 /**
  * Activity to demonstrate basic retrieval of the Google user's ID, email address, and basic
- * profile.
+ * profile, which also adds a request dialog to access the user's Google Drive.
  */
-public class SignInActivity extends AppCompatActivity implements
+public class SignInActivityWithDrive extends AppCompatActivity implements
         GoogleApiClient.OnConnectionFailedListener,
         View.OnClickListener {
 
     private static final String TAG = "SignInActivity";
-
-    public static int getRcSignIn() {
-        return RC_SIGN_IN;
-    }
     private static final int RC_SIGN_IN = 9001;
 
     private GoogleApiClient mGoogleApiClient;
     private TextView mStatusTextView;
-    private TextView emailTextView;
     private ProgressDialog mProgressDialog;
 
     @Override
@@ -47,12 +43,17 @@ public class SignInActivity extends AppCompatActivity implements
 
         // Views
         mStatusTextView = findViewById(R.id.status);
-        emailTextView = findViewById(R.id.email);
+
+        // Button listeners
+        findViewById(R.id.sign_in_button).setOnClickListener(this);
+        findViewById(R.id.sign_out_button).setOnClickListener(this);
+        findViewById(R.id.disconnect_button).setOnClickListener(this);
 
         // [START configure_signin]
         // Configure sign-in to request the user's ID, email address, and basic
         // profile. ID and basic profile are included in DEFAULT_SIGN_IN.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestScopes(new Scope(Scopes.DRIVE_APPFOLDER))
                 .requestEmail()
                 .build();
         // [END configure_signin]
@@ -66,23 +67,18 @@ public class SignInActivity extends AppCompatActivity implements
                 .build();
         // [END build_client]
 
-        // Button listeners
-        SignInButton signInButton = findViewById(R.id.sign_in_button);
-        findViewById(R.id.sign_out_button).setOnClickListener(this);
-        findViewById(R.id.disconnect_button).setOnClickListener(this);
-
         // [START customize_button]
-        // Set the dimensions of the sign-in button.
+        // Customize sign-in button. The sign-in button can be displayed in
+        // multiple sizes and color schemes. It can also be contextually
+        // rendered based on the requested scopes. For example. a red button may
+        // be displayed when Google+ scopes are requested, but a white button
+        // may be displayed when only basic profile is requested. Try adding the
+        // Scopes.PLUS_LOGIN scope to the GoogleSignInOptions to see the
+        // difference.
+        SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
+        signInButton.setScopes(gso.getScopeArray());
         // [END customize_button]
-
-        signInButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
-                startActivityForResult(intent, RC_SIGN_IN);
-            }
-        });
     }
 
     @Override
@@ -129,38 +125,21 @@ public class SignInActivity extends AppCompatActivity implements
         }
     }
     // [END onActivityResult]
-    /////////////////////////////////////////
+
     // [START handleSignInResult]
     private void handleSignInResult(GoogleSignInResult result) {
         Log.d(TAG, "handleSignInResult:" + result.isSuccess());
-        GoogleSignInAccount usuario = null;
         if (result.isSuccess()) {
             // Signed in successfully, show authenticated UI.
             GoogleSignInAccount acct = result.getSignInAccount();
-            usuario = acct;
             mStatusTextView.setText(getString(R.string.signed_in_fmt, acct.getDisplayName()));
             updateUI(true);
         } else {
             // Signed out, show unauthenticated UI.
             updateUI(false);
         }
-        validarUsuario(usuario);
     }
     // [END handleSignInResult]
-
-    public void validarUsuario(GoogleSignInAccount usuario){
-        if (null != usuario){
-            Intent intento = new Intent(this, Logueado.class);
-            Bundle extras = intento.getExtras();
-            extras.putString("titulo", "Iniciaste sesión como: " + usuario.getDisplayName());
-            extras.putString("mail", usuario.getEmail());
-            startActivity(intento);
-        }
-        else{
-            Toast.makeText(this, "ERROR: Usuario no logueado",
-                    Toast.LENGTH_LONG).show();
-        }
-    }
 
     // [START signIn]
     private void signIn() {
@@ -233,7 +212,7 @@ public class SignInActivity extends AppCompatActivity implements
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_and_disconnect).setVisibility(View.VISIBLE);
         } else {
-           // mStatusTextView.setText(R.string.signed_out);
+            mStatusTextView.setText(R.string.signed_out);
 
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_and_disconnect).setVisibility(View.GONE);
